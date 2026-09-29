@@ -16,4 +16,4 @@ _*.mjs
 
 # 含凭证的本地推送脚本，绝不上传
 push_github.bat
-push_*.bat
+push_secret*.bat
