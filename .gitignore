@@ -1,0 +1,19 @@
+# 原始素材 / 系统文件 —— 不上传
+firstwebsite/
+desktop.ini
+Thumbs.db
+.DS_Store
+
+# 运行时产物
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# 本地临时
+_*.txt
+_*.mjs
+
+# 含凭证的本地推送脚本，绝不上传
+push_github.bat
+push_*.bat

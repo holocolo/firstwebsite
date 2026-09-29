@@ -1,0 +1,2390 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>六日 · 个人主页</title>
+<meta name="description" content="六日的个人主页 —— 关于我，以及我的学习记录。">
+
+<style>
+/* ==========================================================================
+   ① 全局配置区 —— 想改颜色，只改这里就够了
+   ========================================================================== */
+:root{
+  --c-bg:        #f6f7fb;   /* 页面背景色 */
+  --c-card:      #ffffff;   /* 卡片背景色 */
+  --c-text:      #1f2430;   /* 主文字颜色 */
+  --c-text-sub:  #646b7d;   /* 次要文字颜色 */
+  --c-line:      #e6e8f0;   /* 分割线 / 边框颜色 */
+  --c-brand:     #4f6ef7;   /* 主题色（按钮、时间线、强调） */
+  --c-brand-2:   #8b5cf6;   /* 主题色渐变终点 */
+  --c-brand-soft:#eef1fe;   /* 主题浅底色（标签背景） */
+
+  --radius:      18px;      /* 卡片圆角 */
+  --radius-sm:   10px;      /* 小元素圆角 */
+  --maxw:        880px;     /* 内容最大宽度 */
+  --avatar-size: 150px;     /* 头像直径（手机端会自动缩小） */
+
+  /* ---- 天气组件 ---- */
+  --c-warm:      #f59e0b;   /* 晴天色 */
+  --c-cool:      #38bdf8;   /* 阴雨色 */
+  --weather-city:"北京";     /* 天气显示的城市名（API 参数在下面 JS 里改） */
+
+  /* 这里改字体：想换字体，把字体名替换掉即可 */
+  --font: "PingFang SC","Microsoft YaHei","Hiragino Sans GB","Source Han Sans SC",
+          system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+}
+
+/* ==========================================================================
+   ② 基础样式
+   ========================================================================== */
+*{ box-sizing:border-box; }
+
+html{ scroll-behavior:smooth; }
+
+body{
+  margin:0;
+  font-family:var(--font);
+  background:var(--c-bg);
+  color:var(--c-text);
+  line-height:1.75;
+  -webkit-font-smoothing:antialiased;
+  font-size:16px;
+}
+
+a{ color:inherit; }
+
+img{ max-width:100%; display:block; }
+
+/* 内容容器：居中 + 左右留白 */
+.wrap{
+  width:100%;
+  max-width:var(--maxw);
+  margin:0 auto;
+  padding:0 20px;
+}
+
+/* 每一"屏" */
+.screen{
+  min-height:100vh;               /* 铺满一屏 */
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  padding:72px 0 56px;
+  position:relative;
+}
+
+/* ==========================================================================
+   ③ 天气组件（固定在右上角）
+   ========================================================================== */
+.weather{
+  position:fixed;
+  top:18px;
+  right:18px;
+  z-index:100;
+  display:flex;
+  align-items:center;
+  gap:11px;
+  padding:10px 15px;
+  background:rgba(255,255,255,.82);        /* 半透明卡片 */
+  backdrop-filter:blur(12px);
+  -webkit-backdrop-filter:blur(12px);
+  border:1px solid var(--c-line);
+  border-radius:14px;
+  box-shadow:0 6px 22px rgba(31,36,48,.09);
+  font-size:13.5px;
+  line-height:1.3;
+  transition:box-shadow .25s ease, transform .25s ease;
+}
+
+.weather:hover{
+  box-shadow:0 10px 28px rgba(31,36,48,.13);
+}
+
+/* 加载中的骨架 */
+.weather--loading .weather__main,
+.weather--loading .weather__sub{ opacity:.45; }
+
+.weather__icon{
+  font-size:26px;
+  line-height:1;
+  filter:saturate(1.15);
+}
+
+.weather__body{ min-width:0; }
+
+.weather__main{
+  display:flex;
+  align-items:baseline;
+  gap:6px;
+  font-weight:700;
+  white-space:nowrap;
+}
+
+.weather__temp{
+  font-size:19px;
+  letter-spacing:-.3px;
+  color:var(--c-text);
+}
+
+.weather__city{
+  font-size:12.5px;
+  font-weight:600;
+  color:var(--c-text-sub);
+  padding-left:6px;
+  border-left:1px solid var(--c-line);
+}
+
+.weather__sub{
+  font-size:12px;
+  color:var(--c-text-sub);
+  white-space:nowrap;
+  display:flex;
+  gap:8px;
+}
+
+.weather__sub b{
+  font-weight:600;
+  color:var(--c-text);
+}
+
+/* 刷新按钮：低调，鼠标悬停才明显 */
+.weather__refresh{
+  flex:0 0 auto;
+  border:0;
+  background:transparent;
+  color:var(--c-text-sub);
+  font-size:13px;
+  cursor:pointer;
+  padding:4px 2px;
+  border-radius:6px;
+  opacity:.55;
+  transition:opacity .2s ease, color .2s ease, transform .4s ease;
+}
+
+.weather__refresh:hover{ opacity:1; color:var(--c-brand); }
+
+.weather__refresh.is-spinning{ transform:rotate(360deg); opacity:1; }
+
+/* 天气加载失败时 */
+.weather--error{
+  color:var(--c-text-sub);
+}
+
+.weather--error .weather__icon{ font-size:20px; opacity:.8; }
+
+/* ==========================================================================
+   ④ 第一屏 —— 关于我
+   ========================================================================== */
+.screen--hero{
+  background:
+    radial-gradient(1000px 520px at 15% -10%, rgba(79,110,247,.10), transparent 60%),
+    radial-gradient(900px 480px at 88% 8%,  rgba(139,92,246,.10), transparent 62%),
+    var(--c-bg);
+  text-align:center;
+}
+
+/* 头像 */
+.avatar-ring{
+  width:calc(var(--avatar-size) + 14px);
+  height:calc(var(--avatar-size) + 14px);
+  margin:0 auto 26px;
+  padding:5px;
+  border-radius:50%;
+  background:linear-gradient(135deg, var(--c-brand), var(--c-brand-2));
+  box-shadow:0 14px 34px rgba(79,110,247,.26);
+}
+
+.avatar{
+  width:100%;
+  height:100%;
+  border-radius:50%;          /* 圆形头像 */
+  object-fit:cover;
+  object-position:center top;
+  background:var(--c-card);
+  border:3px solid var(--c-card);
+}
+
+/* 昵称 */
+.nickname{
+  font-size:clamp(30px, 6.4vw, 42px);
+  font-weight:800;
+  letter-spacing:.5px;
+  margin:0 0 10px;
+  background:linear-gradient(120deg, var(--c-brand), var(--c-brand-2));
+  -webkit-background-clip:text;
+  background-clip:text;
+  color:transparent;
+}
+
+/* 一句话介绍 */
+.tagline{
+  font-size:clamp(15px, 3.6vw, 17.5px);
+  color:var(--c-text-sub);
+  margin:0 auto 34px;
+  max-width:560px;
+}
+
+/* 信息卡片（兴趣爱好 / 学习目标） */
+.info-grid{
+  display:grid;
+  grid-template-columns:repeat(2, 1fr);
+  gap:16px;
+  text-align:left;
+}
+
+.info-card{
+  background:var(--c-card);
+  border:1px solid var(--c-line);
+  border-radius:var(--radius);
+  padding:22px 22px 20px;
+  box-shadow:0 4px 18px rgba(31,36,48,.05);
+  transition:transform .25s ease, box-shadow .25s ease;
+}
+
+.info-card:hover{
+  transform:translateY(-3px);
+  box-shadow:0 12px 26px rgba(31,36,48,.10);
+}
+
+.info-card__title{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  font-size:15px;
+  font-weight:700;
+  margin:0 0 14px;
+  color:var(--c-text);
+}
+
+.info-card__title::before{
+  content:"";
+  width:4px;
+  height:16px;
+  border-radius:2px;
+  background:linear-gradient(180deg, var(--c-brand), var(--c-brand-2));
+}
+
+/* 标签（兴趣爱好用） */
+.tags{
+  display:flex;
+  flex-wrap:wrap;
+  gap:9px;
+}
+
+.tag{
+  font-size:14px;
+  line-height:1;
+  padding:9px 13px;
+  border-radius:999px;
+  background:var(--c-brand-soft);
+  color:var(--c-brand);
+  font-weight:600;
+  white-space:nowrap;
+}
+
+/* 列表（学习目标用） */
+.goal-list{
+  margin:0;
+  padding:0;
+  list-style:none;
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+
+.goal-list li{
+  position:relative;
+  padding-left:22px;
+  font-size:14.5px;
+  color:var(--c-text-sub);
+}
+
+.goal-list li::before{
+  content:"";
+  position:absolute;
+  left:2px;
+  top:11px;
+  width:8px;
+  height:8px;
+  border-radius:50%;
+  background:linear-gradient(135deg, var(--c-brand), var(--c-brand-2));
+}
+
+/* 向下滚动提示 */
+.scroll-hint{
+  position:absolute;
+  bottom:26px;
+  left:50%;
+  transform:translateX(-50%);
+  font-size:12.5px;
+  color:var(--c-text-sub);
+  letter-spacing:2px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:6px;
+  opacity:.75;
+  text-decoration:none;
+}
+
+.scroll-hint__arrow{
+  width:12px;
+  height:12px;
+  border-right:2px solid var(--c-text-sub);
+  border-bottom:2px solid var(--c-text-sub);
+  transform:rotate(45deg);
+  animation:bounce 1.7s infinite;
+}
+
+@keyframes bounce{
+  0%,100%{ transform:rotate(45deg) translate(0,0);   opacity:.4; }
+  50%    { transform:rotate(45deg) translate(3px,3px); opacity:1; }
+}
+
+/* ==========================================================================
+   ⑤ 第二屏 —— 我的学习记录（时间线）
+   ========================================================================== */
+.screen--log{
+  justify-content:flex-start;
+  min-height:auto;
+  padding-bottom:104px;
+}
+
+.section-head{
+  text-align:center;
+  margin-bottom:46px;
+}
+
+.section-head__title{
+  font-size:clamp(24px, 5.4vw, 32px);
+  font-weight:800;
+  margin:0 0 8px;
+  letter-spacing:.5px;
+}
+
+.section-head__sub{
+  margin:0;
+  color:var(--c-text-sub);
+  font-size:14.5px;
+}
+
+/* 时间线主轴 */
+.timeline{
+  position:relative;
+  padding-left:34px;
+}
+
+.timeline::before{
+  content:"";
+  position:absolute;
+  left:9px;
+  top:8px;
+  bottom:8px;
+  width:2px;
+  border-radius:2px;
+  background:linear-gradient(180deg, var(--c-brand), var(--c-brand-2), var(--c-line));
+}
+
+/* 单条记录 */
+.entry{
+  position:relative;
+  padding-bottom:30px;
+}
+
+.entry:last-child{ padding-bottom:0; }
+
+/* 节点圆点 */
+.entry::before{
+  content:"";
+  position:absolute;
+  left:-33px;
+  top:18px;
+  width:20px;
+  height:20px;
+  border-radius:50%;
+  background:var(--c-card);
+  border:3px solid var(--c-brand);
+  box-shadow:0 0 0 4px var(--c-brand-soft);
+  z-index:1;
+}
+
+/* 记录卡片 */
+.entry__card{
+  background:var(--c-card);
+  border:1px solid var(--c-line);
+  border-radius:var(--radius);
+  padding:20px 22px;
+  box-shadow:0 4px 18px rgba(31,36,48,.05);
+  transition:transform .25s ease, box-shadow .25s ease, border-color .25s ease;
+}
+
+.entry__card:hover{
+  transform:translateX(4px);
+  border-color:rgba(79,110,247,.35);
+  box-shadow:0 12px 26px rgba(31,36,48,.10);
+}
+
+.entry__date{
+  display:inline-block;
+  font-size:12.5px;
+  font-weight:700;
+  letter-spacing:.6px;
+  color:var(--c-brand);
+  background:var(--c-brand-soft);
+  padding:4px 10px;
+  border-radius:999px;
+  margin-bottom:11px;
+}
+
+.entry__title{
+  font-size:17.5px;
+  font-weight:700;
+  margin:0 0 7px;
+}
+
+.entry__desc{
+  margin:0;
+  font-size:14.5px;
+  color:var(--c-text-sub);
+}
+
+/* 记录里出现的代码/模型名 */
+.entry__desc code{
+  font-family:ui-monospace, "Cascadia Mono", Consolas, monospace;
+  font-size:12.5px;
+  padding:1px 6px;
+  border-radius:5px;
+  background:var(--c-brand-soft);
+  color:var(--c-brand);
+  white-space:nowrap;
+}
+
+/* 页脚 */
+.footer{
+  text-align:center;
+  font-size:13px;
+  color:var(--c-text-sub);
+  padding:0 0 40px;
+  opacity:.8;
+}
+
+/* ==========================================================================
+   ⑥ 第三屏 —— 一键去除图片背景
+   ========================================================================== */
+.screen--tools{
+  background:
+    radial-gradient(900px 460px at 84% 110%, rgba(139,92,246,.09), transparent 60%),
+    var(--c-bg);
+}
+
+/* ---- 上传区（支持点击 + 拖拽） ---- */
+.dropzone{
+  position:relative;
+  border:2px dashed var(--c-line);
+  border-radius:var(--radius);
+  background:var(--c-card);
+  padding:38px 22px;
+  text-align:center;
+  cursor:pointer;
+  transition:border-color .22s ease, background .22s ease, transform .22s ease;
+  box-shadow:0 4px 18px rgba(31,36,48,.05);
+}
+
+.dropzone:hover{
+  border-color:var(--c-brand);
+  background:var(--c-brand-soft);
+}
+
+/* 拖拽经过时高亮 */
+.dropzone.is-dragover{
+  border-color:var(--c-brand);
+  background:var(--c-brand-soft);
+  transform:scale(1.012);
+  box-shadow:0 10px 30px rgba(79,110,247,.20);
+}
+
+/* 有图之后的紧凑样式 */
+.dropzone.has-image{
+  padding:16px;
+  border-style:solid;
+}
+
+.dropzone__hint{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:9px;
+  color:var(--c-text-sub);
+  font-size:14.5px;
+  pointer-events:none;
+}
+
+.dropzone__icon{
+  font-size:34px;
+  line-height:1;
+  filter:grayscale(.15);
+}
+
+.dropzone__hint b{
+  color:var(--c-brand);
+  font-weight:700;
+}
+
+.dropzone__hint small{
+  font-size:12.5px;
+  opacity:.8;
+}
+
+/* 隐藏原生 file input，用 label/拖拽触发 */
+.dropzone input[type="file"]{
+  position:absolute;
+  width:1px; height:1px;
+  opacity:0;
+  pointer-events:none;
+}
+
+.dropzone__preview{
+  display:none;
+  max-height:280px;
+  margin:0 auto;
+  border-radius:var(--radius-sm);
+  object-fit:contain;
+}
+
+.dropzone.has-image .dropzone__hint{ display:none; }
+.dropzone.has-image .dropzone__preview{ display:block; }
+
+/* 换图小按钮 */
+.dropzone__change{
+  display:none;
+  margin-top:12px;
+}
+
+.dropzone.has-image .dropzone__change{ display:inline-block; }
+
+/* ---- 操作按钮行 ---- */
+.tool-actions{
+  display:flex;
+  flex-wrap:wrap;
+  gap:12px;
+  justify-content:center;
+  margin:22px 0 6px;
+}
+
+.btn{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  font-family:var(--font);
+  font-size:15px;
+  font-weight:700;
+  padding:12px 26px;
+  border:0;
+  border-radius:999px;
+  cursor:pointer;
+  text-decoration:none;
+  transition:transform .18s ease, box-shadow .22s ease, background .22s ease, opacity .22s ease;
+  -webkit-tap-highlight-color:transparent;
+}
+
+.btn:active{ transform:scale(.975); }
+
+/* 主按钮 */
+.btn--primary{
+  color:#fff;
+  background:linear-gradient(135deg, var(--c-brand), var(--c-brand-2));
+  box-shadow:0 8px 20px rgba(79,110,247,.28);
+}
+
+.btn--primary:hover:not(:disabled){
+  box-shadow:0 12px 26px rgba(79,110,247,.36);
+}
+
+/* 次要按钮（下载 / 重来） */
+.btn--ghost{
+  color:var(--c-text);
+  background:var(--c-card);
+  border:1px solid var(--c-line);
+  box-shadow:0 3px 12px rgba(31,36,48,.05);
+}
+
+.btn--ghost:hover:not(:disabled){
+  border-color:var(--c-brand);
+  color:var(--c-brand);
+}
+
+/* 处理中 / 禁用状态：变灰 */
+.btn:disabled,
+.btn.is-disabled{
+  cursor:not-allowed;
+  color:#9aa0b0;
+  background:#e9ebf2;
+  border-color:transparent;
+  box-shadow:none;
+  opacity:.85;
+  pointer-events:none;
+}
+
+/* 按钮里的小转圈 */
+.btn__spinner{
+  display:none;
+  width:14px;
+  height:14px;
+  border:2px solid rgba(255,255,255,.45);
+  border-top-color:#fff;
+  border-radius:50%;
+  animation:spin .7s linear infinite;
+}
+
+.btn.is-busy .btn__spinner{ display:inline-block; }
+
+.btn:disabled .btn__spinner{
+  border-color:rgba(154,160,176,.4);
+  border-top-color:#9aa0b0;
+}
+
+@keyframes spin{ to{ transform:rotate(360deg); } }
+
+/* ---- 状态提示条 ---- */
+.tool-status{
+  display:none;
+  align-items:flex-start;
+  gap:9px;
+  margin:16px auto 0;
+  max-width:640px;
+  padding:12px 16px;
+  border-radius:var(--radius-sm);
+  font-size:14px;
+  line-height:1.6;
+  border:1px solid transparent;
+}
+
+.tool-status.is-visible{ display:flex; }
+
+.tool-status--info{
+  background:var(--c-brand-soft);
+  color:var(--c-brand);
+  border-color:rgba(79,110,247,.20);
+}
+
+.tool-status--error{
+  background:#fef2f2;
+  color:#b42318;
+  border-color:#fecdc9;
+}
+
+.tool-status--ok{
+  background:#f0fdf4;
+  color:#15803d;
+  border-color:#bbf7d0;
+}
+
+.tool-status__icon{ flex:0 0 auto; font-size:15px; }
+
+/* ---- 结果对比 ---- */
+.compare{
+  display:none;
+  grid-template-columns:repeat(2, 1fr);
+  gap:16px;
+  margin-top:26px;
+}
+
+.compare.is-visible{ display:grid; }
+
+.compare__panel{
+  background:var(--c-card);
+  border:1px solid var(--c-line);
+  border-radius:var(--radius);
+  overflow:hidden;
+  box-shadow:0 4px 18px rgba(31,36,48,.05);
+  display:flex;
+  flex-direction:column;
+}
+
+.compare__head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+  padding:11px 15px;
+  border-bottom:1px solid var(--c-line);
+  font-size:13.5px;
+  font-weight:700;
+}
+
+.compare__badge{
+  font-size:11.5px;
+  font-weight:700;
+  padding:3px 9px;
+  border-radius:999px;
+  background:var(--c-brand-soft);
+  color:var(--c-brand);
+}
+
+.compare__badge--after{
+  background:#f0fdf4;
+  color:#15803d;
+}
+
+/* 图片区：棋盘格背景，透明区域一眼可见 */
+.compare__stage{
+  flex:1;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:14px;
+  min-height:230px;
+  background-color:#fff;
+  background-image:
+    linear-gradient(45deg, #eef0f6 25%, transparent 25%),
+    linear-gradient(-45deg, #eef0f6 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #eef0f6 75%),
+    linear-gradient(-45deg, transparent 75%, #eef0f6 75%);
+  background-size:16px 16px;
+  background-position:0 0, 0 8px, 8px -8px, -8px 0;
+}
+
+/* 原图那格不用棋盘格 */
+.compare__panel--before .compare__stage{
+  background-image:none;
+  background-color:#f8f9fc;
+}
+
+.compare__stage img{
+  max-width:100%;
+  max-height:320px;
+  object-fit:contain;
+  border-radius:6px;
+}
+
+/* 处理中：结果格显示骨架 */
+.compare__stage .skeleton{
+  display:none;
+  flex-direction:column;
+  align-items:center;
+  gap:10px;
+  color:var(--c-text-sub);
+  font-size:13px;
+}
+
+.compare__stage.is-loading .skeleton{ display:flex; }
+.compare__stage.is-loading img{ display:none; }
+
+.skeleton__ring{
+  width:30px;
+  height:30px;
+  border:3px solid var(--c-line);
+  border-top-color:var(--c-brand);
+  border-radius:50%;
+  animation:spin .8s linear infinite;
+}
+
+.compare__foot{
+  display:flex;
+  gap:10px;
+  padding:11px 15px;
+  border-top:1px solid var(--c-line);
+  flex-wrap:wrap;
+}
+
+.compare__foot .btn{
+  font-size:13.5px;
+  padding:8px 18px;
+}
+
+/* 小字说明 */
+.tool-note{
+  margin:22px auto 0;
+  max-width:640px;
+  font-size:12.5px;
+  line-height:1.75;
+  color:var(--c-text-sub);
+  text-align:center;
+  opacity:.9;
+}
+
+.tool-note code{
+  font-family:ui-monospace, "Cascadia Mono", Consolas, monospace;
+  font-size:12px;
+  padding:1px 6px;
+  border-radius:5px;
+  background:var(--c-brand-soft);
+  color:var(--c-brand);
+}
+
+/* ==========================================================================
+   ⑥-B 第四屏 —— 文字生成图片（Google 极简风格）
+   --------------------------------------------------------------------------
+   这一屏刻意用一套独立的样式：白底、大量留白、无渐变、细边框、
+   Google 四色做点缀。视觉上和前三屏区分开，像 Google 的搜索页。
+   ========================================================================== */
+.screen--imagen{
+  --g-blue:   #4285f4;
+  --g-red:    #ea4335;
+  --g-yellow: #fbbc05;
+  --g-green:  #34a853;
+
+  background:#fff;
+  color:#202124;
+  justify-content:flex-start;
+  padding-top:76px;
+}
+
+/* ---- 顶部 Logo 风格的标题 ---- */
+.g-head{
+  text-align:center;
+  margin-bottom:34px;
+}
+
+.g-logo{
+  font-size:clamp(28px, 6vw, 40px);
+  font-weight:400;
+  letter-spacing:-.5px;
+  margin:0 0 6px;
+  color:#202124;
+  line-height:1.25;
+}
+
+.g-logo span:nth-child(1){ color:var(--g-blue); }
+.g-logo span:nth-child(2){ color:var(--g-red); }
+.g-logo span:nth-child(3){ color:var(--g-yellow); }
+.g-logo span:nth-child(4){ color:var(--g-blue); }
+.g-logo span:nth-child(5){ color:var(--g-green); }
+.g-logo span:nth-child(6){ color:var(--g-red); }
+.g-logo span:nth-child(7){ color:var(--g-blue); }
+
+.g-sub{
+  margin:0;
+  font-size:14px;
+  color:#5f6368;
+}
+
+/* ---- 搜索式输入框 ---- */
+.g-form{
+  max-width:640px;
+  margin:0 auto;
+}
+
+.g-prompt-wrap{
+  position:relative;
+  display:flex;
+  align-items:center;
+}
+
+.g-prompt{
+  width:100%;
+  font-family:var(--font);
+  font-size:16px;
+  line-height:1.5;
+  color:#202124;
+  padding:15px 56px 15px 46px;
+  border:1px solid #dfe1e5;
+  border-radius:24px;
+  outline:none;
+  background:#fff;
+  transition:box-shadow .2s ease, border-color .2s ease;
+  resize:none;
+  box-sizing:border-box;
+  min-height:54px;
+  max-height:180px;
+  overflow-y:auto;
+}
+
+.g-prompt::placeholder{ color:#80868b; }
+
+.g-prompt:hover{
+  box-shadow:0 1px 6px rgba(32,33,36,.18);
+  border-color:rgba(223,225,229,0);
+}
+
+.g-prompt:focus{
+  box-shadow:0 1px 6px rgba(32,33,36,.20);
+  border-color:rgba(223,225,229,0);
+}
+
+.g-prompt:disabled{
+  background:#f8f9fa;
+  color:#80868b;
+}
+
+/* 输入框左侧的搜索放大镜 */
+.g-prompt-icon{
+  position:absolute;
+  left:17px;
+  width:18px;
+  height:18px;
+  color:#9aa0a6;
+  pointer-events:none;
+}
+
+/* 输入框右侧的字数 */
+.g-counter{
+  position:absolute;
+  right:18px;
+  font-size:11.5px;
+  color:#9aa0a6;
+  pointer-events:none;
+  font-variant-numeric:tabular-nums;
+}
+
+/* ---- 选项行（Google 那种轻量下拉） ---- */
+.g-options{
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px 12px;
+  justify-content:center;
+  margin:18px 0 0;
+}
+
+.g-field{
+  display:flex;
+  align-items:center;
+  gap:7px;
+  font-size:13px;
+  color:#5f6368;
+}
+
+.g-field > span{ white-space:nowrap; }
+
+.g-select{
+  font-family:var(--font);
+  font-size:13px;
+  color:#202124;
+  padding:7px 30px 7px 12px;
+  border:1px solid #dfe1e5;
+  border-radius:18px;
+  background:#fff url("data:image/svg+xml;charset=utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%239aa0a6'/%3E%3C/svg%3E") no-repeat right 12px center;
+  outline:none;
+  cursor:pointer;
+  appearance:none;
+  -webkit-appearance:none;
+  transition:border-color .2s ease, box-shadow .2s ease;
+}
+
+.g-select:hover{ border-color:#c9ccd1; }
+
+.g-select:focus{
+  border-color:var(--g-blue);
+  box-shadow:0 0 0 3px rgba(66,133,244,.14);
+}
+
+.g-select:disabled{ background-color:#f8f9fa; color:#9aa0a6; cursor:not-allowed; }
+
+/* ---- 按钮行 ---- */
+.g-actions{
+  display:flex;
+  gap:12px;
+  justify-content:center;
+  flex-wrap:wrap;
+  margin-top:24px;
+}
+
+.g-btn{
+  font-family:var(--font);
+  font-size:14px;
+  font-weight:500;
+  padding:11px 24px;
+  border-radius:4px;
+  border:1px solid transparent;
+  cursor:pointer;
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  transition:background .18s ease, box-shadow .18s ease, color .18s ease;
+  -webkit-tap-highlight-color:transparent;
+}
+
+/* Google 的主按钮：蓝底白字，方角（不是圆药丸） */
+.g-btn--primary{
+  background:var(--g-blue);
+  color:#fff;
+}
+
+.g-btn--primary:hover:not(:disabled){
+  background:#3367d6;
+  box-shadow:0 1px 3px rgba(60,64,67,.30), 0 4px 8px rgba(60,64,67,.15);
+}
+
+/* 次要按钮：Google 的灰底按钮 */
+.g-btn--secondary{
+  background:#f8f9fa;
+  color:#3c4043;
+  border-color:#dadce0;
+}
+
+.g-btn--secondary:hover:not(:disabled){
+  background:#f1f3f4;
+  border-color:#d2d5d9;
+}
+
+.g-btn:disabled,
+.g-btn.is-disabled{
+  background:#f1f3f4;
+  color:#bdc1c6;
+  border-color:transparent;
+  cursor:not-allowed;
+  box-shadow:none;
+  pointer-events:none;
+}
+
+.g-btn__spinner{
+  display:none;
+  width:14px; height:14px;
+  border:2px solid rgba(255,255,255,.45);
+  border-top-color:#fff;
+  border-radius:50%;
+  animation:spin .7s linear infinite;
+}
+
+.g-btn.is-busy .g-btn__spinner{ display:inline-block; }
+
+.g-btn:disabled .g-btn__spinner{
+  border-color:rgba(189,193,198,.5);
+  border-top-color:#bdc1c6;
+}
+
+/* ---- 状态提示：Google 风格的横幅 ---- */
+.g-status{
+  display:none;
+  align-items:flex-start;
+  gap:10px;
+  max-width:640px;
+  margin:20px auto 0;
+  padding:13px 16px;
+  border-radius:8px;
+  font-size:13.5px;
+  line-height:1.6;
+  border:1px solid #dadce0;
+  color:#3c4043;
+  background:#f8f9fa;
+}
+
+.g-status.is-visible{ display:flex; }
+
+.g-status--error{
+  background:#fce8e6;
+  border-color:#f6aea9;
+  color:#c5221f;
+}
+
+.g-status--ok{
+  background:#e6f4ea;
+  border-color:#a8dab5;
+  color:#137333;
+}
+
+.g-status--info{
+  background:#e8f0fe;
+  border-color:#aecbfa;
+  color:#1967d2;
+}
+
+.g-status__icon{ flex:0 0 auto; }
+
+/* ---- 结果网格 ---- */
+.g-results{
+  display:none;
+  margin-top:30px;
+}
+
+.g-results.is-visible{ display:block; }
+
+.g-results__meta{
+  display:flex;
+  justify-content:center;
+  gap:16px;
+  flex-wrap:wrap;
+  font-size:12.5px;
+  color:#5f6368;
+  margin-bottom:16px;
+}
+
+.g-results__meta b{ color:#202124; font-weight:500; }
+
+.g-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit, minmax(240px, 1fr));
+  gap:16px;
+}
+
+.g-card{
+  border:1px solid #dadce0;
+  border-radius:8px;
+  overflow:hidden;
+  background:#fff;
+  display:flex;
+  flex-direction:column;
+  transition:box-shadow .2s ease, border-color .2s ease;
+}
+
+.g-card:hover{
+  box-shadow:0 1px 3px rgba(60,64,67,.30), 0 4px 8px rgba(60,64,67,.15);
+  border-color:#c9ccd1;
+}
+
+.g-card__img{
+  display:block;
+  width:100%;
+  background:#f8f9fa;
+  aspect-ratio:1 / 1;
+  object-fit:contain;
+}
+
+.g-card__bar{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+  padding:10px 12px;
+  border-top:1px solid #f1f3f4;
+}
+
+.g-card__label{
+  font-size:12px;
+  color:#5f6368;
+}
+
+.g-card__dl{
+  font-family:var(--font);
+  font-size:12.5px;
+  font-weight:500;
+  color:var(--g-blue);
+  background:none;
+  border:0;
+  cursor:pointer;
+  padding:5px 9px;
+  border-radius:4px;
+  transition:background .18s ease;
+}
+
+.g-card__dl:hover{ background:rgba(66,133,244,.08); }
+
+/* 出图中的骨架格 */
+.g-skeleton{
+  display:none;
+  border:1px solid #dadce0;
+  border-radius:8px;
+  background:#fff;
+  aspect-ratio:1 / 1;
+  align-items:center;
+  justify-content:center;
+  flex-direction:column;
+  gap:12px;
+  color:#5f6368;
+  font-size:13px;
+}
+
+.g-skeleton.is-visible{ display:flex; }
+
+.g-skeleton__ring{
+  width:32px; height:32px;
+  border:3px solid #e8eaed;
+  border-top-color:var(--g-blue);
+  border-radius:50%;
+  animation:spin .85s linear infinite;
+}
+
+.g-skeleton__bar{
+  width:56%;
+  height:6px;
+  border-radius:3px;
+  background:#f1f3f4;
+  overflow:hidden;
+  position:relative;
+}
+
+.g-skeleton__bar::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  background:linear-gradient(90deg, transparent, rgba(66,133,244,.28), transparent);
+  animation:gslide 1.4s infinite;
+}
+
+@keyframes gslide{
+  0%{ transform:translateX(-100%); }
+  100%{ transform:translateX(100%); }
+}
+
+/* 底部小注 */
+.g-note{
+  max-width:640px;
+  margin:28px auto 0;
+  font-size:12px;
+  line-height:1.8;
+  color:#80868b;
+  text-align:center;
+}
+
+.g-note code{
+  font-family:ui-monospace, "Cascadia Mono", Consolas, monospace;
+  font-size:11.5px;
+  padding:1px 5px;
+  border-radius:4px;
+  background:#f1f3f4;
+  color:#3c4043;
+}
+
+/* 提示词示例胶囊 */
+.g-examples{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  justify-content:center;
+  margin-top:14px;
+}
+
+.g-chip{
+  font-family:var(--font);
+  font-size:12.5px;
+  color:#3c4043;
+  background:#f8f9fa;
+  border:1px solid #dadce0;
+  border-radius:999px;
+  padding:6px 13px;
+  cursor:pointer;
+  transition:background .18s ease, border-color .18s ease;
+}
+
+.g-chip:hover{
+  background:#f1f3f4;
+  border-color:#c9ccd1;
+}
+
+.g-chip:disabled{ color:#bdc1c6; cursor:not-allowed; background:#fff; }
+
+/* ==========================================================================
+   ⑦ 手机端适配
+   ========================================================================== */
+@media (max-width:640px){
+  :root{
+    --avatar-size:118px;
+    --radius:15px;
+  }
+
+  body{ font-size:15.5px; }
+
+  .screen{ padding:56px 0 46px; }
+
+  .info-grid{ grid-template-columns:1fr; }   /* 双栏改单栏 */
+
+  .info-card{ padding:19px 18px; }
+
+  .timeline{ padding-left:30px; }
+
+  .timeline::before{ left:7px; }
+
+  .entry::before{
+    left:-30px;
+    width:18px;
+    height:18px;
+    top:16px;
+  }
+
+  .entry__card{ padding:17px 18px; }
+
+  .entry__card:hover{ transform:none; }      /* 手机上不要位移 */
+  .info-card:hover{ transform:none; }
+
+  .scroll-hint{ display:none; }              /* 手机屏幕矮，隐藏提示 */
+
+  /* 手机上天气组件改为贴顶的横向条，不遮挡头像 */
+  .weather{
+    top:0;
+    left:0;
+    right:0;
+    border-radius:0 0 14px 14px;
+    border-left:0;
+    border-right:0;
+    border-top:0;
+    padding:8px 16px;
+    justify-content:center;
+    background:rgba(255,255,255,.92);
+  }
+
+  .weather__icon{ font-size:21px; }
+
+  .weather__temp{ font-size:17px; }
+
+  /* 给第一屏留出顶部空间，避免内容被天气条压住 */
+  .screen--hero{ padding-top:88px; }
+
+  /* 第三屏：对比改成上下排列 */
+  .compare.is-visible{ grid-template-columns:1fr; }
+
+  .compare__stage{ min-height:190px; }
+
+  .compare__stage img{ max-height:250px; }
+
+  .dropzone{ padding:30px 18px; }
+
+  .tool-actions{ gap:10px; }
+
+  .btn{ flex:1 1 auto; padding:12px 18px; }
+
+  /* 第四屏：收窄留白，按钮撑满 */
+  .screen--imagen{ padding-top:52px; }
+
+  .g-prompt{ font-size:16px; padding:14px 52px 14px 42px; }
+
+  .g-options{ gap:8px 10px; }
+
+  .g-actions{ gap:10px; }
+
+  .g-btn{ flex:1 1 auto; justify-content:center; }
+
+  .g-grid{ grid-template-columns:1fr; }
+
+  .g-card__img{ aspect-ratio:auto; max-height:420px; object-fit:contain; }
+}
+
+/* 尊重用户的"减少动效"系统设置 */
+@media (prefers-reduced-motion:reduce){
+  *{ animation:none !important; transition:none !important; }
+  html{ scroll-behavior:auto; }
+}
+</style>
+</head>
+
+<body>
+
+<!-- ======================== 天气组件（右上角） ========================
+     数据来源：Open-Meteo（https://open-meteo.com/），免费、无需 API Key。
+     北京坐标已写在页面底部 JS 里，想换城市改那里的 latitude / longitude。
+-->
+<div class="weather weather--loading" id="weather" title="数据来源：Open-Meteo">
+  <span class="weather__icon" id="w-icon">⏳</span>
+  <div class="weather__body">
+    <div class="weather__main">
+      <span class="weather__temp" id="w-temp">--°</span>
+      <span class="weather__city" id="w-city">北京</span>
+    </div>
+    <div class="weather__sub">
+      <span id="w-desc">加载中…</span>
+      <span id="w-range"></span>
+    </div>
+  </div>
+  <button class="weather__refresh" id="w-refresh" type="button" aria-label="刷新天气" title="刷新天气">↻</button>
+</div>
+
+<!-- ======================== 第一屏：关于我 ======================== -->
+<section class="screen screen--hero" id="about">
+  <div class="wrap">
+
+    <!-- 头像：把 avatar.jpg 换成你自己的图片，改文件名即可 -->
+    <div class="avatar-ring">
+      <img class="avatar" src="avatar.jpg" alt="六日的头像">
+    </div>
+
+    <!-- 昵称 -->
+    <h1 class="nickname">六日</h1>
+
+    <!-- 一句话介绍 -->
+    <p class="tagline">在北京，一边写代码一边折腾新东西，喜欢把想法做成能点开看的样子。</p>
+
+    <!-- 兴趣爱好 + 学习目标 -->
+    <div class="info-grid">
+
+      <!-- 兴趣爱好：在下面 <span class="tag"> 里增删即可 -->
+      <div class="info-card">
+        <h2 class="info-card__title">兴趣爱好</h2>
+        <div class="tags">
+          <span class="tag">📷 摄影</span>
+          <span class="tag">🎵 听音乐</span>
+          <span class="tag">🎬 影视剪辑</span>
+          <span class="tag">📚 读书</span>
+          <span class="tag">🏃 跑步</span>
+          <span class="tag">✈️ 旅行</span>
+        </div>
+      </div>
+
+      <!-- 学习目标：在下面 <li> 里增删即可 -->
+      <div class="info-card">
+        <h2 class="info-card__title">学习目标</h2>
+        <ul class="goal-list">
+          <li>掌握 Python 爬虫，能独立抓取和整理数据</li>
+          <li>学会前端三件套，做出自己的网页</li>
+          <li>坚持记录学习过程，积累成自己的知识库</li>
+        </ul>
+      </div>
+
+    </div>
+  </div>
+
+  <a class="scroll-hint" href="#log">
+    <span>向下滚动</span>
+    <span class="scroll-hint__arrow"></span>
+  </a>
+</section>
+
+
+<!-- ======================== 第二屏：我的学习记录 ======================== -->
+<section class="screen screen--log" id="log">
+  <div class="wrap">
+
+    <div class="section-head">
+      <h2 class="section-head__title">我的学习记录</h2>
+      <p class="section-head__sub">把每一点进步都记下来</p>
+    </div>
+
+    <!--
+      时间线：新增记录时，复制一整个 <article class="entry"> ... </article> 块，
+      粘到最上面（或最下面），改日期、标题、描述即可。
+      新记录想排在前面 → 粘到最上面；想按时间顺序 → 粘到最下面。
+    -->
+    <div class="timeline">
+
+      <!-- ===== 记录 1 ===== -->
+      <article class="entry">
+        <div class="entry__card">
+          <span class="entry__date">2026 · 09</span>
+          <h3 class="entry__title">第一次文生图：文字生成图片</h3>
+          <p class="entry__desc">
+            接上 OpenRouter 的 <code>openai/gpt-5.4-image-2</code> 做了一屏「打字出图」，
+            用 Google 那种极简白底风格做的界面。中间踩了个坑：<code>chat/completions</code>
+            在本机所在地区被区域限制挡掉（403），换成专用的
+            <code>/api/v1/images</code> 才通 —— 也算学会了「一个模型可能有多个可用端点，
+            不通就换一条路试试」。
+          </p>
+        </div>
+      </article>
+
+      <!-- ===== 记录 2 ===== -->
+      <article class="entry">
+        <div class="entry__card">
+          <span class="entry__date">2026 · 09</span>
+          <h3 class="entry__title">第一个实用工具：一键去除图片背景</h3>
+          <p class="entry__desc">
+            调 Replicate 上的 <code>lucataco/remove-bg</code> 模型做出抠图工具：
+            拖拽上传、原图与结果对比、一键下载透明 PNG。因为浏览器端存不住密钥，
+            顺手写了个 Python 小服务把 API Key 藏在环境变量里 —— 第一次搞明白
+            前端该做什么、后端该做什么。
+          </p>
+        </div>
+      </article>
+
+      <!-- ===== 记录 3 ===== -->
+      <article class="entry">
+        <div class="entry__card">
+          <span class="entry__date">2026 · 09</span>
+          <h3 class="entry__title">第一次 API 调用</h3>
+          <p class="entry__desc">
+            在个人主页右上角接入了 Open-Meteo 的天气接口，用 fetch 请求 JSON 数据、
+            再把实时气温和天气状况渲染到页面上 —— 第一次让自己的网页能"拿到外面的数据"，
+            也搞懂了无需 API Key 的公开接口怎么用。
+          </p>
+        </div>
+      </article>
+
+      <!-- ===== 记录 4 ===== -->
+      <article class="entry">
+        <div class="entry__card">
+          <span class="entry__date">2026 · 09</span>
+          <h3 class="entry__title">第一个个人网页：我的个人主页</h3>
+          <p class="entry__desc">
+            用 HTML + CSS 独立完成了个人主页，包含「关于我」和「学习记录」两屏，
+            适配了手机和电脑，也学会了怎么用变量统一管理页面颜色。
+          </p>
+        </div>
+      </article>
+
+      <!-- ===== 记录 5 ===== -->
+      <article class="entry">
+        <div class="entry__card">
+          <span class="entry__date">2026 · 08</span>
+          <h3 class="entry__title">第一个功能实现：爬虫抓取</h3>
+          <p class="entry__desc">
+            写出第一个 Python 爬虫，用 requests 取网页、用 BeautifulSoup 解析，
+            成功把目标数据抓下来存成表格 —— 第一次让程序替自己干活。
+          </p>
+        </div>
+      </article>
+
+      <!-- ===== 新增记录放这里（复制上面整块 <article> 修改） ===== -->
+
+    </div>
+  </div>
+</section>
+
+
+<!-- ======================== 第三屏：一键去除图片背景 ========================
+     调用的模型：lucataco/remove-bg  https://replicate.com/lucataco/remove-bg
+     API Key 不在这个文件里 —— 浏览器端存不住密钥（F12 就能看到），
+     所以由同目录的 server.py 在服务端读取环境变量 REPLICATE_API_TOKEN 并代为调用。
+     使用方法：双击 start.bat，再打开 http://127.0.0.1:8000
+-->
+<section class="screen screen--tools" id="tools">
+  <div class="wrap">
+
+    <div class="section-head">
+      <h2 class="section-head__title">一键去除图片背景</h2>
+      <p class="section-head__sub">上传图片，自动抠掉背景，保留透明 PNG</p>
+    </div>
+
+    <!-- ---------- 上传区：点击选择 或 直接拖进来 ---------- -->
+    <label class="dropzone" id="dropzone">
+      <input type="file" id="file-input" accept="image/png,image/jpeg,image/webp">
+      <div class="dropzone__hint">
+        <span class="dropzone__icon">🖼️</span>
+        <span>把图片拖到这里，或<b>点击选择文件</b></span>
+        <small>支持 JPG / PNG / WebP，单张不超过 8 MB</small>
+      </div>
+      <img class="dropzone__preview" id="preview" alt="待处理的图片预览">
+      <span class="btn btn--ghost dropzone__change" id="change-btn">换一张</span>
+    </label>
+
+    <!-- ---------- 操作按钮 ---------- -->
+    <div class="tool-actions">
+      <button class="btn btn--primary" id="run-btn" type="button" disabled>
+        <span class="btn__spinner"></span>
+        <span id="run-btn-text">去除背景</span>
+      </button>
+      <button class="btn btn--ghost" id="download-btn" type="button" disabled>下载结果</button>
+      <button class="btn btn--ghost" id="reset-btn" type="button" disabled>重来</button>
+    </div>
+
+    <!-- ---------- 状态提示 ---------- -->
+    <div class="tool-status" id="status" role="status" aria-live="polite">
+      <span class="tool-status__icon" id="status-icon">ℹ️</span>
+      <span id="status-text"></span>
+    </div>
+
+    <!-- ---------- 原图 / 结果 对比 ---------- -->
+    <div class="compare" id="compare">
+
+      <div class="compare__panel compare__panel--before">
+        <div class="compare__head">
+          <span>原图</span>
+          <span class="compare__badge" id="before-size">—</span>
+        </div>
+        <div class="compare__stage">
+          <img id="before-img" alt="原图">
+        </div>
+      </div>
+
+      <div class="compare__panel compare__panel--after">
+        <div class="compare__head">
+          <span>去背景结果</span>
+          <span class="compare__badge compare__badge--after" id="after-size">—</span>
+        </div>
+        <div class="compare__stage" id="after-stage">
+          <div class="skeleton">
+            <span class="skeleton__ring"></span>
+            <span id="skeleton-text">处理中…</span>
+          </div>
+          <img id="after-img" alt="去除背景后的图片">
+        </div>
+      </div>
+
+    </div>
+
+    <p class="tool-note">
+      由 <code>lucataco/remove-bg</code> 模型处理 · 结果背景为透明，棋盘格区域即透明部分<br>
+      本地服务需先启动：双击 <code>start.bat</code>，浏览器访问 <code>http://127.0.0.1:8000</code>
+    </p>
+
+  </div>
+</section>
+
+
+<!-- ==================== 第四屏：文字生成图片 ====================
+     模型：openai/gpt-5.4-image-2（通过 OpenRouter）
+     Key 不在这个文件里 —— 由 server.py 从环境变量 OPENROUTER_API_KEY 读取。
+
+     接口选型说明（重要）：
+       走的是 OpenRouter 的「专用 Image API」 POST /api/v1/images，
+       不是 /api/v1/chat/completions。因为 chat/completions 那条路
+       在本机所在地区会被 OpenAI 的区域限制挡掉（403
+       "This model is not available in your region."），
+       而 /api/v1/images 实测可用。
+
+     接口：
+       POST http://127.0.0.1:8000/api/generate-image
+         { prompt, aspect_ratio, quality, n }
+       返回：n=1 时直接是 image/png 二进制，n>1 时是 JSON { images:[{b64,...}] }
+-->
+<section class="screen screen--imagen" id="imagen">
+  <div class="wrap">
+
+    <div class="g-head">
+      <h2 class="g-logo">
+        <span>文</span><span>字</span><span>生</span><span>成</span><span>图</span><span>片</span>
+      </h2>
+      <p class="g-sub">描述你想要的画面，AI 帮你画出来</p>
+    </div>
+
+    <div class="g-form">
+
+      <!-- 提示词输入框（Google 搜索框样式） -->
+      <div class="g-prompt-wrap">
+        <svg class="g-prompt-icon" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <circle cx="11" cy="11" r="7"></circle>
+          <line x1="16.5" y1="16.5" x2="21" y2="21"></line>
+        </svg>
+        <textarea class="g-prompt" id="g-prompt" rows="1"
+          placeholder="例如：一只戴宇航头盔的橘猫，扁平插画风格，白色背景"
+          maxlength="4000"></textarea>
+        <span class="g-counter" id="g-counter">0/4000</span>
+      </div>
+
+      <!-- 几个现成的提示词，点一下就填进去 -->
+      <div class="g-examples" id="g-examples">
+        <button class="g-chip" type="button" data-p="一只戴宇航头盔的橘猫，扁平插画风格，纯白背景">宇航员橘猫</button>
+        <button class="g-chip" type="button" data-p="雨后的东京街头，霓虹灯倒映在湿漉漉的地面上，电影感摄影">雨夜东京</button>
+        <button class="g-chip" type="button" data-p="极简主义几何抽象图形，莫兰迪色系，留白构图">莫兰迪几何</button>
+        <button class="g-chip" type="button" data-p="水墨风格的远山与孤舟，留白意境，中国画">水墨山水</button>
+      </div>
+      <!-- 选项 -->
+      <div class="g-options">
+        <label class="g-field">
+          <span>比例</span>
+          <select class="g-select" id="g-aspect">
+            <option value="1:1">1:1 方形</option>
+            <option value="16:9">16:9 宽屏</option>
+            <option value="9:16">9:16 竖屏</option>
+            <option value="3:2">3:2 横版</option>
+            <option value="2:3">2:3 竖版</option>
+            <option value="4:3">4:3</option>
+            <option value="3:4">3:4</option>
+            <option value="21:9">21:9 超宽</option>
+          </select>
+        </label>
+
+        <label class="g-field">
+          <span>质量</span>
+          <select class="g-select" id="g-quality">
+            <option value="low">低（快 · 省）</option>
+            <option value="medium">中</option>
+            <option value="high">高（慢 · 贵）</option>
+            <option value="auto">自动</option>
+          </select>
+        </label>
+
+        <label class="g-field">
+          <span>张数</span>
+          <select class="g-select" id="g-count">
+            <option value="1">1 张</option>
+            <option value="2">2 张</option>
+            <option value="4">4 张</option>
+          </select>
+        </label>
+      </div>
+
+      <!-- 按钮 -->
+      <div class="g-actions">
+        <button class="g-btn g-btn--primary" id="g-run" type="button" disabled>
+          <span class="g-btn__spinner"></span>
+          <span id="g-run-text">生成图片</span>
+        </button>
+        <button class="g-btn g-btn--secondary" id="g-clear" type="button" disabled>清空</button>
+      </div>
+
+      <!-- 状态 -->
+      <div class="g-status" id="g-status" role="status" aria-live="polite">
+        <span class="g-status__icon" id="g-status-icon"></span>
+        <span id="g-status-text"></span>
+      </div>
+    </div>
+
+    <!-- 结果 -->
+    <div class="g-results" id="g-results">
+      <div class="g-results__meta" id="g-meta"></div>
+      <div class="g-grid" id="g-grid"></div>
+      <div class="g-skeleton" id="g-skeleton">
+        <span class="g-skeleton__ring"></span>
+        <span id="g-skeleton-text">正在生成，通常 15–60 秒…</span>
+        <span class="g-skeleton__bar"></span>
+      </div>
+    </div>
+
+    <p class="g-note">
+      由 <code>openai/gpt-5.4-image-2</code> 生成 ·
+      接口 <code>POST /api/v1/images</code>（OpenRouter 专用图像接口）<br>
+      点击图片下方的「下载」可保存 · 需先双击 <code>start.bat</code> 启动本地服务
+    </p>
+
+  </div>
+</section>
+
+
+<footer class="footer wrap">
+  <p>© 2026 六日 · 保持好奇，持续记录</p>
+</footer>
+
+
+<!-- ======================== 天气功能：调用 Open-Meteo API ======================== -->
+<script>
+(function () {
+  /* ---------- ① 想换城市，只改这两行 ---------- */
+  const LATITUDE  = 39.9042;    // 纬度：北京 = 39.9042
+  const LONGITUDE = 116.4074;   // 经度：北京 = 116.4074
+  const CITY_NAME = "北京";      // 页面上显示的城市名
+
+  /* ---------- ② Open-Meteo 接口地址（免费，无需 API Key） ---------- */
+  const API_URL =
+    "https://api.open-meteo.com/v1/forecast" +
+    "?latitude="  + LATITUDE +
+    "&longitude=" + LONGITUDE +
+    "&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m" +
+    "&daily=temperature_2m_max,temperature_2m_min" +
+    "&timezone=Asia%2FShanghai" +
+    "&forecast_days=1";
+
+  /* ---------- ③ WMO 天气代码 → 图标 + 中文描述 ---------- */
+  const WEATHER_CODE = {
+    0:  ["☀️", "晴"],
+    1:  ["🌤️", "晴间多云"],
+    2:  ["⛅", "多云"],
+    3:  ["☁️", "阴"],
+    45: ["🌫️", "有雾"],
+    48: ["🌫️", "雾凇"],
+    51: ["🌦️", "小毛毛雨"],
+    53: ["🌦️", "毛毛雨"],
+    55: ["🌧️", "浓毛毛雨"],
+    56: ["🌧️", "冻毛毛雨"],
+    57: ["🌧️", "浓冻毛毛雨"],
+    61: ["🌦️", "小雨"],
+    63: ["🌧️", "中雨"],
+    65: ["🌧️", "大雨"],
+    66: ["🌧️", "冻雨"],
+    67: ["🌧️", "强冻雨"],
+    71: ["🌨️", "小雪"],
+    73: ["🌨️", "中雪"],
+    75: ["❄️", "大雪"],
+    77: ["🌨️", "米雪"],
+    80: ["🌦️", "阵雨"],
+    81: ["🌧️", "强阵雨"],
+    82: ["⛈️", "暴阵雨"],
+    85: ["🌨️", "阵雪"],
+    86: ["❄️", "强阵雪"],
+    95: ["⛈️", "雷阵雨"],
+    96: ["⛈️", "雷阵雨伴冰雹"],
+    99: ["⛈️", "强雷阵雨伴冰雹"]
+  };
+
+  /* ---------- ④ 元素引用 ---------- */
+  const box      = document.getElementById("weather");
+  const elIcon   = document.getElementById("w-icon");
+  const elTemp   = document.getElementById("w-temp");
+  const elCity   = document.getElementById("w-city");
+  const elDesc   = document.getElementById("w-desc");
+  const elRange  = document.getElementById("w-range");
+  const btnFresh = document.getElementById("w-refresh");
+
+  if (!box) return;
+  elCity.textContent = CITY_NAME;
+
+  /* ---------- ⑤ 用 fetch 请求 Open-Meteo ---------- */
+  function loadWeather() {
+    box.classList.remove("weather--error");
+    box.classList.add("weather--loading");
+
+    fetch(API_URL)
+      .then(function (res) {
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        return res.json();
+      })
+      .then(function (data) {
+        const cur   = data.current || {};
+        const daily = data.daily   || {};
+
+        const code = cur.weather_code;
+        const info = WEATHER_CODE[code] || ["🌡️", "未知天气"];
+
+        const temp = Math.round(cur.temperature_2m);
+        const high = Math.round((daily.temperature_2m_max || [])[0]);
+        const low  = Math.round((daily.temperature_2m_min || [])[0]);
+
+        elIcon.textContent = info[0];
+        elTemp.textContent = temp + "°";
+        elDesc.textContent = info[1];
+        elRange.textContent = (isFinite(high) && isFinite(low))
+          ? "↑" + high + "° / ↓" + low + "°"
+          : "";
+
+        // 顺手把体感温度放进提示气泡
+        const feels = cur.apparent_temperature;
+        box.title = CITY_NAME + " · " + info[1] +
+                    (feels != null ? " · 体感 " + Math.round(feels) + "°" : "") +
+                    "\n数据来源：Open-Meteo";
+      })
+      .catch(function (err) {
+        elIcon.textContent = "⚠️";
+        elTemp.textContent = "--°";
+        elDesc.textContent = "天气加载失败";
+        elRange.textContent = "";
+        box.classList.add("weather--error");
+        box.title = "无法连接 Open-Meteo：" + err.message + "（请检查网络后点 ↻ 重试）";
+      })
+      .finally(function () {
+        box.classList.remove("weather--loading");
+      });
+  }
+
+  /* ---------- ⑥ 首次加载 + 手动刷新 + 每 15 分钟自动更新 ---------- */
+  loadWeather();
+
+  btnFresh.addEventListener("click", function () {
+    btnFresh.classList.add("is-spinning");
+    setTimeout(function () { btnFresh.classList.remove("is-spinning"); }, 420);
+    loadWeather();
+  });
+
+  setInterval(loadWeather, 15 * 60 * 1000);
+})();
+</script>
+
+
+<!-- ======================== 去背景功能：调用本地服务 → Replicate ======================== -->
+<script>
+(function () {
+  /* ---------- ① 配置 ---------- */
+  const API_ENDPOINT = "/api/remove-bg";   // 由 server.py 提供
+  const HEALTH_URL   = "/api/health";
+  const MAX_BYTES    = 8 * 1024 * 1024;    // 8 MB
+
+  /* ---------- ② 元素 ---------- */
+  const dropzone   = document.getElementById("dropzone");
+  const fileInput  = document.getElementById("file-input");
+  const preview    = document.getElementById("preview");
+  const changeBtn  = document.getElementById("change-btn");
+  const runBtn     = document.getElementById("run-btn");
+  const runBtnText = document.getElementById("run-btn-text");
+  const dlBtn      = document.getElementById("download-btn");
+  const resetBtn   = document.getElementById("reset-btn");
+  const statusBox  = document.getElementById("status");
+  const statusIcon = document.getElementById("status-icon");
+  const statusText = document.getElementById("status-text");
+  const compare    = document.getElementById("compare");
+  const beforeImg  = document.getElementById("before-img");
+  const afterImg   = document.getElementById("after-img");
+  const afterStage = document.getElementById("after-stage");
+  const beforeSize = document.getElementById("before-size");
+  const afterSize  = document.getElementById("after-size");
+  const skeletonTx = document.getElementById("skeleton-text");
+
+  if (!dropzone) return;
+
+  /* ---------- ③ 内部状态 ---------- */
+  let currentFile = null;     // 用户选的原始 File
+  let originalUrl = null;     // 原图 object URL
+  let resultUrl   = null;     // 结果 object URL（用完要 revoke，避免内存泄漏）
+  let busy        = false;
+
+  const MAX_LABEL = (MAX_BYTES / 1024 / 1024) + " MB";
+
+  /* ---------- ④ 小工具 ---------- */
+  function fmtSize(bytes) {
+    if (bytes == null) return "—";
+    if (bytes < 1024) return bytes + " B";
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(0) + " KB";
+    return (bytes / 1024 / 1024).toFixed(2) + " MB";
+  }
+
+  function showStatus(type, text) {
+    statusBox.className = "tool-status is-visible tool-status--" + type;
+    statusIcon.textContent = type === "error" ? "⚠️" : (type === "ok" ? "✅" : "⏳");
+    statusText.textContent = text;
+  }
+
+  function hideStatus() {
+    statusBox.className = "tool-status";
+  }
+
+  function setBusy(state) {
+    busy = state;
+    runBtn.disabled = state || !currentFile;
+    dlBtn.disabled = state || !resultUrl;
+    resetBtn.disabled = state || (!currentFile && !resultUrl);
+    runBtn.classList.toggle("is-busy", state);
+    runBtnText.textContent = state ? "处理中…" : "去除背景";
+    dropzone.style.pointerEvents = state ? "none" : "";
+  }
+
+  function clearResult() {
+    if (resultUrl) { URL.revokeObjectURL(resultUrl); resultUrl = null; }
+    afterImg.removeAttribute("src");
+    afterSize.textContent = "—";
+    afterStage.classList.remove("is-loading");
+    compare.classList.remove("is-visible");
+  }
+
+  function resetAll() {
+    if (originalUrl) { URL.revokeObjectURL(originalUrl); originalUrl = null; }
+    clearResult();
+    currentFile = null;
+    fileInput.value = "";
+    preview.removeAttribute("src");
+    dropzone.classList.remove("has-image");
+    beforeImg.removeAttribute("src");
+    beforeSize.textContent = "—";
+    hideStatus();
+    setBusy(false);
+  }
+
+  /* ---------- ⑤ 选图 / 拖拽 ---------- */
+  function acceptFile(file) {
+    if (!file) return;
+
+    if (!/^image\//.test(file.type)) {
+      showStatus("error", "这不是图片文件，请选择 JPG、PNG 或 WebP 格式的图片。");
+      return;
+    }
+    if (file.size > MAX_BYTES) {
+      showStatus("error",
+        "图片太大（" + fmtSize(file.size) + "），请压缩到 " + MAX_LABEL + " 以内再试。");
+      return;
+    }
+
+    resetAll();
+    currentFile = file;
+
+    originalUrl = URL.createObjectURL(file);
+    preview.src = originalUrl;
+    beforeImg.src = originalUrl;
+    beforeSize.textContent = fmtSize(file.size);
+    dropzone.classList.add("has-image");
+
+    hideStatus();
+    setBusy(false);
+  }
+
+  // 点击 label 里的 input 触发选择（点击「换一张」按钮时不要重复触发）
+  changeBtn.addEventListener("click", function (e) {
+    e.preventDefault();
+    e.stopPropagation();
+    fileInput.click();
+  });
+
+  fileInput.addEventListener("change", function () {
+    if (fileInput.files && fileInput.files[0]) acceptFile(fileInput.files[0]);
+  });
+
+  // 拖拽上传
+  ["dragenter", "dragover"].forEach(function (evt) {
+    dropzone.addEventListener(evt, function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      if (!busy) dropzone.classList.add("is-dragover");
+    });
+  });
+
+  ["dragleave", "drop"].forEach(function (evt) {
+    dropzone.addEventListener(evt, function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      dropzone.classList.remove("is-dragover");
+    });
+  });
+
+  dropzone.addEventListener("drop", function (e) {
+    if (busy) return;
+    const dt = e.dataTransfer;
+    if (!dt) return;
+    // 优先取文件；如果是拖来的图片链接，给出提示
+    if (dt.files && dt.files.length) {
+      acceptFile(dt.files[0]);
+    } else {
+      showStatus("info", "请拖入本地图片文件（暂不支持直接拖网页上的图片链接）。");
+    }
+  });
+
+  // 阻止浏览器在页面其他地方打开拖入的图片
+  ["dragover", "drop"].forEach(function (evt) {
+    window.addEventListener(evt, function (e) {
+      if (!dropzone.contains(e.target)) e.preventDefault();
+    });
+  });
+
+  /* ---------- ⑥ File → data URI ---------- */
+  function fileToDataUri(file) {
+    return new Promise(function (resolve, reject) {
+      const reader = new FileReader();
+      reader.onload = function () { resolve(reader.result); };
+      reader.onerror = function () { reject(new Error("读取本地文件失败")); };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  /* ---------- ⑦ 主流程：调用后端 → Replicate ---------- */
+  runBtn.addEventListener("click", function () {
+    if (busy || !currentFile) return;
+
+    setBusy(true);
+    clearResult();
+    afterStage.classList.add("is-loading");
+    skeletonTx.textContent = "处理中…";
+    compare.classList.add("is-visible");
+    showStatus("info", "正在上传图片并调用 Replicate 模型，通常需要 5–20 秒，请稍候…");
+
+    const t0 = Date.now();
+
+    fileToDataUri(currentFile)
+      .then(function (dataUri) {
+        return fetch(API_ENDPOINT, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            image: dataUri,
+            filename: currentFile.name || "upload.png"
+          })
+        });
+      })
+      .then(function (res) {
+        const elapsed = ((Date.now() - t0) / 1000).toFixed(1);
+
+        if (!res.ok) {
+          // 后端出错时回的是 JSON { error: "..." }
+          return res.json()
+            .catch(function () { return {}; })
+            .then(function (body) {
+              const msg = body.error || ("处理失败（HTTP " + res.status + "）");
+              throw new Error(msg);
+            });
+        }
+
+        const model = res.headers.get("X-Model") || "lucataco/remove-bg";
+        return res.blob().then(function (blob) {
+          return { blob: blob, elapsed: elapsed, model: model };
+        });
+      })
+      .then(function (r) {
+        resultUrl = URL.createObjectURL(r.blob);
+        afterImg.src = resultUrl;
+        afterSize.textContent = fmtSize(r.blob.size);
+        afterStage.classList.remove("is-loading");
+        dlBtn.disabled = false;
+        resetBtn.disabled = false;
+        showStatus("ok",
+          "完成！用时 " + r.elapsed + " 秒，结果 " + fmtSize(r.blob.size) +
+          "（" + r.model + "）。点「下载结果」保存为透明 PNG。");
+      })
+      .catch(function (err) {
+        afterStage.classList.remove("is-loading");
+        compare.classList.remove("is-visible");
+        showStatus("error", err.message || "处理失败，请稍后重试。");
+      })
+      .finally(function () {
+        setBusy(false);
+      });
+  });
+
+  /* ---------- ⑧ 下载结果 ---------- */
+  dlBtn.addEventListener("click", function () {
+    if (!resultUrl) return;
+    const base = (currentFile && currentFile.name
+      ? currentFile.name.replace(/\.[^.]+$/, "")
+      : "image");
+    const a = document.createElement("a");
+    a.href = resultUrl;
+    a.download = base + "-no-bg.png";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  });
+
+  /* ---------- ⑨ 重来 ---------- */
+  resetBtn.addEventListener("click", function () {
+    if (busy) return;
+    resetAll();
+    showStatus("info", "已清空，可以重新选图。");
+  });
+
+  /* ---------- ⑩ 启动时做一次体检，提前告诉用户服务/Key 状态 ---------- */
+  fetch(HEALTH_URL)
+    .then(function (r) { return r.json(); })
+    .then(function (h) {
+      if (h && h.token_configured === false) {
+        showStatus("error",
+          "本地服务已启动，但没有读到 REPLICATE_API_TOKEN 环境变量。" +
+          "请按 README 设置好 Key，然后重启服务。");
+      } else {
+        showStatus("info", "准备就绪，选一张图片试试吧。");
+      }
+    })
+    .catch(function () {
+      showStatus("error",
+        "连不上本地服务。请先双击 start.bat 启动服务，再通过 " +
+        "http://127.0.0.1:8000 打开本页面（直接双击 index.html 不行）。");
+    });
+})();
+</script>
+
+
+<!-- ============ 文生图功能：调用本地服务 → OpenRouter Image API ============ -->
+<script>
+(function () {
+  /* ---------- ① 配置 ---------- */
+  const API_ENDPOINT = "/api/generate-image";
+  const HEALTH_URL   = "/api/health";
+  const MAX_CHARS    = 4000;
+
+  /* ---------- ② 元素 ---------- */
+  const promptEl  = document.getElementById("g-prompt");
+  const counterEl = document.getElementById("g-counter");
+  const aspectEl  = document.getElementById("g-aspect");
+  const qualityEl = document.getElementById("g-quality");
+  const countEl   = document.getElementById("g-count");
+  const runBtn    = document.getElementById("g-run");
+  const runTxt    = document.getElementById("g-run-text");
+  const clearBtn  = document.getElementById("g-clear");
+  const statusEl  = document.getElementById("g-status");
+  const statusIcon= document.getElementById("g-status-icon");
+  const statusTxt = document.getElementById("g-status-text");
+  const resultsEl = document.getElementById("g-results");
+  const gridEl    = document.getElementById("g-grid");
+  const metaEl    = document.getElementById("g-meta");
+  const skelEl    = document.getElementById("g-skeleton");
+  const skelTxt   = document.getElementById("g-skeleton-text");
+  const examplesEl= document.getElementById("g-examples");
+
+  if (!promptEl) return;
+
+  /* ---------- ③ 状态 ---------- */
+  let busy = false;
+  let resultUrls = [];          // 生成结果的 object URL，重生成前要回收
+
+  /* ---------- ④ 小工具 ---------- */
+  function showStatus(type, text) {
+    statusEl.className = "g-status is-visible g-status--" + type;
+    statusIcon.textContent = type === "error" ? "⚠️" : (type === "ok" ? "✅" : "⏳");
+    statusTxt.textContent = text;
+  }
+
+  function hideStatus() { statusEl.className = "g-status"; }
+
+  function clearResults() {
+    resultUrls.forEach(function (u) { URL.revokeObjectURL(u); });
+    resultUrls = [];
+    gridEl.innerHTML = "";
+    metaEl.innerHTML = "";
+    resultsEl.classList.remove("is-visible");
+    skelEl.classList.remove("is-visible");
+    clearBtn.disabled = true;
+  }
+
+  function setBusy(state) {
+    busy = state;
+    runBtn.classList.toggle("is-busy", state);
+    runBtn.disabled = state || !promptEl.value.trim();
+    runTxt.textContent = state ? "生成中…" : "生成图片";
+    [promptEl, aspectEl, qualityEl, countEl].forEach(function (el) { el.disabled = state; });
+    Array.prototype.forEach.call(examplesEl.querySelectorAll(".g-chip"), function (c) {
+      c.disabled = state;
+    });
+    clearBtn.disabled = state || gridEl.childElementCount === 0;
+  }
+
+  /* 输入框自适应高度 */
+  function autoGrow() {
+    promptEl.style.height = "auto";
+    promptEl.style.height = Math.min(promptEl.scrollHeight, 180) + "px";
+  }
+
+  function syncInput() {
+    const n = promptEl.value.length;
+    counterEl.textContent = n + "/" + MAX_CHARS;
+    autoGrow();
+    if (!busy) runBtn.disabled = !promptEl.value.trim();
+  }
+
+  promptEl.addEventListener("input", syncInput);
+
+  // Ctrl/Cmd + Enter 快捷提交
+  promptEl.addEventListener("keydown", function (e) {
+    if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+      e.preventDefault();
+      if (!runBtn.disabled) runBtn.click();
+    }
+  });
+
+  /* 示例提示词：点一下填进去 */
+  examplesEl.addEventListener("click", function (e) {
+    const chip = e.target.closest(".g-chip");
+    if (!chip || busy) return;
+    promptEl.value = chip.getAttribute("data-p") || "";
+    syncInput();
+    promptEl.focus();
+  });
+
+  /* ---------- ⑤ 主流程 ---------- */
+  runBtn.addEventListener("click", function () {
+    const prompt = promptEl.value.trim();
+    if (busy) return;
+    if (!prompt) { showStatus("error", "请先写下你想要的画面。"); return; }
+    if (prompt.length > MAX_CHARS) {
+      showStatus("error", "提示词太长了，请控制在 " + MAX_CHARS + " 字以内。");
+      return;
+    }
+
+    const n = parseInt(countEl.value, 10) || 1;
+    const aspect = aspectEl.value;
+    const quality = qualityEl.value;
+
+    clearResults();
+    setBusy(true);
+    skelTxt.textContent = "正在生成 " + n + " 张，通常 15–60 秒…";
+    skelEl.classList.add("is-visible");
+    resultsEl.classList.add("is-visible");
+    showStatus("info", "已提交给 " + aspect + " / " + quality + " 的模型，请稍候…");
+
+    const t0 = Date.now();
+
+    fetch(API_ENDPOINT, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        prompt: prompt,
+        aspect_ratio: aspect,
+        quality: quality,
+        n: n
+      })
+    })
+      .then(function (res) {
+        const elapsed = ((Date.now() - t0) / 1000).toFixed(1);
+
+        if (!res.ok) {
+          // 失败时后端返回 JSON { ok:false, error:"..." }
+          return res.json()
+            .catch(function () { return {}; })
+            .then(function (b) {
+              throw new Error(b.error || ("生成失败（HTTP " + res.status + "）"));
+            });
+        }
+
+        const ctype = res.headers.get("Content-Type") || "";
+
+        // 单张：后端直接回 PNG 二进制
+        if (ctype.indexOf("image/") === 0) {
+          return res.blob().then(function (blob) {
+            return {
+              images: [{ blob: blob, media: ctype }],
+              elapsed: elapsed,
+              model: res.headers.get("X-Model") || "",
+              cost: res.headers.get("X-Cost-Usd")
+            };
+          });
+        }
+
+        // 多张：后端回 JSON，图片是 base64
+        return res.json().then(function (d) {
+          const list = (d.images || []).map(function (im) {
+            const bin = atob(im.b64);
+            const buf = new Uint8Array(bin.length);
+            for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
+            return {
+              blob: new Blob([buf], { type: im.media_type || "image/png" }),
+              media: im.media_type || "image/png"
+            };
+          });
+          if (!list.length) throw new Error("模型没有返回图片。");
+          return {
+            images: list,
+            elapsed: elapsed,
+            model: d.model || "",
+            cost: d.cost_usd != null ? String(d.cost_usd) : null
+          };
+        });
+      })
+      .then(function (r) {
+        skelEl.classList.remove("is-visible");
+
+        // 每张卡片：图片 + 下载按钮
+        r.images.forEach(function (img, i) {
+          const url = URL.createObjectURL(img.blob);
+          resultUrls.push(url);
+
+          const card = document.createElement("div");
+          card.className = "g-card";
+
+          const el = document.createElement("img");
+          el.className = "g-card__img";
+          el.src = url;
+          el.alt = "生成的图片 " + (i + 1);
+          el.loading = "lazy";
+
+          const bar = document.createElement("div");
+          bar.className = "g-card__bar";
+
+          const label = document.createElement("span");
+          label.className = "g-card__label";
+          label.textContent = "第 " + (i + 1) + " 张 · " + Math.round(img.blob.size / 1024) + " KB";
+
+          const dl = document.createElement("button");
+          dl.type = "button";
+          dl.className = "g-card__dl";
+          dl.textContent = "下载";
+          dl.addEventListener("click", function () {
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = "ai-image-" + (i + 1) + ".png";
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+          });
+
+          bar.appendChild(label);
+          bar.appendChild(dl);
+          card.appendChild(el);
+          card.appendChild(bar);
+          gridEl.appendChild(card);
+        });
+
+        // 结果上方的元信息
+        const bits = [];
+        if (r.model) bits.push("<b>" + r.model + "</b>");
+        bits.push("用时 <b>" + r.elapsed + " 秒</b>");
+        bits.push("<b>" + r.images.length + "</b> 张");
+        bits.push(aspect + " · " + quality);
+        if (r.cost && parseFloat(r.cost) > 0) {
+          bits.push("成本 <b>$" + parseFloat(r.cost).toFixed(4) + "</b>");
+        }
+        metaEl.innerHTML = bits.join(" · ");
+
+        showStatus("ok", "生成完成，共 " + r.images.length + " 张，用时 " + r.elapsed + " 秒。点卡片里的「下载」保存。");
+        clearBtn.disabled = false;
+      })
+      .catch(function (err) {
+        skelEl.classList.remove("is-visible");
+        resultsEl.classList.remove("is-visible");
+        showStatus("error", err.message || "生成失败，请稍后重试。");
+      })
+      .finally(function () {
+        setBusy(false);
+        syncInput();
+      });
+  });
+
+  /* ---------- ⑥ 清空 ---------- */
+  clearBtn.addEventListener("click", function () {
+    if (busy) return;
+    clearResults();
+    hideStatus();
+  });
+
+  /* ---------- ⑦ 启动自检 ---------- */
+  syncInput();
+
+  fetch(HEALTH_URL)
+    .then(function (r) { return r.json(); })
+    .then(function (h) {
+      if (h && h.openrouter_configured === false) {
+        showStatus("error",
+          "本地服务已启动，但没读到 OPENROUTER_API_KEY 环境变量。" +
+          "请按 README 设置好 Key，然后重启服务。");
+      } else {
+        showStatus("info", "写一句描述，点「生成图片」就能出图。");
+      }
+    })
+    .catch(function () {
+      showStatus("error",
+        "连不上本地服务。请先双击 start.bat，再通过 http://127.0.0.1:8000 打开本页面。");
+    });
+})();
+</script>
+
+</body>
+</html>
