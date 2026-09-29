@@ -17,3 +17,6 @@ _*.mjs
 # 含凭证的本地推送脚本，绝不上传
 push_github.bat
 push_secret*.bat
+
+# 本地验证脚本
+_verify.js

@@ -555,13 +555,10 @@ img{ max-width:100%; display:block; }
 .dropzone.has-image .dropzone__hint{ display:none; }
 .dropzone.has-image .dropzone__preview{ display:block; }
 
-/* 换图小按钮 */
-.dropzone__change{
-  display:none;
-  margin-top:12px;
-}
+/* 换图小按钮（放在上传框下方的按钮行里，仅在有图时显示） */
+.tool-actions__change{ display:none; }
 
-.dropzone.has-image .dropzone__change{ display:inline-block; }
+.tool-actions.has-image .tool-actions__change{ display:inline-flex; }
 
 /* ---- 操作按钮行 ---- */
 .tool-actions{
@@ -1532,11 +1529,11 @@ img{ max-width:100%; display:block; }
         <small>支持 JPG / PNG / WebP，单张不超过 8 MB</small>
       </div>
       <img class="dropzone__preview" id="preview" alt="待处理的图片预览">
-      <span class="btn btn--ghost dropzone__change" id="change-btn">换一张</span>
     </label>
 
     <!-- ---------- 操作按钮 ---------- -->
     <div class="tool-actions">
+      <span class="btn btn--ghost tool-actions__change" id="change-btn">换一张</span>
       <button class="btn btn--primary" id="run-btn" type="button" disabled>
         <span class="btn__spinner"></span>
         <span id="run-btn-text">去除背景</span>
@@ -1851,6 +1848,7 @@ img{ max-width:100%; display:block; }
   const fileInput  = document.getElementById("file-input");
   const preview    = document.getElementById("preview");
   const changeBtn  = document.getElementById("change-btn");
+  const toolActions = document.querySelector(".tool-actions");
   const runBtn     = document.getElementById("run-btn");
   const runBtnText = document.getElementById("run-btn-text");
   const dlBtn      = document.getElementById("download-btn");
@@ -1919,6 +1917,7 @@ img{ max-width:100%; display:block; }
     fileInput.value = "";
     preview.removeAttribute("src");
     dropzone.classList.remove("has-image");
+    if (toolActions) toolActions.classList.remove("has-image");
     beforeImg.removeAttribute("src");
     beforeSize.textContent = "—";
     hideStatus();
@@ -1947,6 +1946,7 @@ img{ max-width:100%; display:block; }
     beforeImg.src = originalUrl;
     beforeSize.textContent = fmtSize(file.size);
     dropzone.classList.add("has-image");
+    if (toolActions) toolActions.classList.add("has-image");
 
     hideStatus();
     setBusy(false);
