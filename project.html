@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>项目 — 胡晶晶</title>
+<meta name="description" content="胡晶晶的作品项目详情。">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800;900&family=Noto+Sans+SC:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+
+<div class="boot" id="boot"><div style="text-align:center"><div class="boot__mark">胡晶晶</div><div class="boot__bar"><i></i></div></div></div>
+<canvas id="field" aria-hidden="true"></canvas>
+
+<nav class="menu" id="menu">
+  <button class="bar__menu menu__close" id="menuClose">关闭 / CLOSE</button>
+  <ul class="menu__list">
+    <li><a href="index.html">首页 <em>Index</em></a></li>
+    <li><a href="work.html">作品 <em>Selected Work</em></a></li>
+    <li><a href="screen.html">影音 <em>On the Screen</em></a></li>
+    <li><a href="words.html">文字 <em>Written</em></a></li>
+    <li><a href="about.html">关于 <em>This is Me</em></a></li>
+    <li><a href="contact.html">联系 <em>Say Hello</em></a></li>
+  </ul>
+</nav>
+
+<header class="bar">
+  <a class="bar__mark" href="index.html">HU<span>·</span>JINGJING</a>
+  <div class="bar__right">
+    <button class="bar__menu" id="menuBtn">Menu</button>
+    <a class="pill" href="contact.html">写信</a>
+  </div>
+</header>
+
+<main class="page">
+
+  <article class="detail" id="detail">
+    <img class="detail__prop" id="dProp" alt="" aria-hidden="true">
+    <div class="detail__eyebrow" data-rev>
+      <span id="dNo">001</span><i>—</i><span id="dCat">分类</span>
+    </div>
+    <h1 class="detail__title" id="dTitle" data-rev></h1>
+    <p class="detail__lead" id="dLead" data-rev></p>
+    <div class="detail__body" id="dBody" data-rev></div>
+    <dl class="facts" id="dFacts" data-rev></dl>
+    <div id="dSecs" data-rev></div>
+    <nav class="nav2" id="dNav"></nav>
+  </article>
+
+</main>
+
+<footer class="foot">
+  <span>&copy; 2026 胡晶晶 HU JINGJING</span>
+  <span><a href="work.html">全部作品</a></span>
+</footer>
+
+<script src="assets/js/field-gl.js"></script>
+<script src="assets/js/props.js"></script>
+<script src="assets/js/projects.js"></script>
+<script src="assets/js/pages.js"></script>
+<script src="assets/js/main.js"></script>
+</body>
+</html>

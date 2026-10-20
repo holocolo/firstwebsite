@@ -1,22 +1,26 @@
-# 原始素材 / 系统文件 —— 不上传
-firstwebsite/
+# 原始素材 / 中间产物 —— 不上传
+assets/img/_raw/
+assets/img/avatar.webp
+assets/img/portrait.jpg
+
+# AI 生成原图（文件名带时间戳的那批，成品已裁好放在 assets/img/）
+assets/img/*T12-47-34.png
+
+# 系统文件
 desktop.ini
 Thumbs.db
 .DS_Store
 
-# 运行时产物
+# 运行时 / 临时
 __pycache__/
 *.pyc
 .venv/
 venv/
-
-# 本地临时
 _*.txt
 _*.mjs
+_*.log
+_*.py
 
-# 含凭证的本地推送脚本，绝不上传
+# 本地凭证脚本，绝不入库
 push_github.bat
 push_secret*.bat
-
-# 本地验证脚本
-_verify.js
